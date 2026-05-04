@@ -4,7 +4,7 @@ import './index.css';
 const API_BASE = "http://localhost:8000";
 
 function App() {
-  const [view, setView] = useState('login'); // login, dashboard, quiz, results
+  const [view, setView] = useState('login'); // login, dashboard, quiz, results, analytics, performance-report
   const [user, setUser] = useState(null);
   const [dashboardData, setDashboardData] = useState(null);
   const [currentQuiz, setCurrentQuiz] = useState(null);
@@ -12,6 +12,7 @@ function App() {
   const [quizResults, setQuizResults] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
   const [analyticsData, setAnalyticsData] = useState(null);
+  const [detailedAnalysis, setDetailedAnalysis] = useState(null);
 
   // Login handler
   const handleLogin = async (e) => {
@@ -43,6 +44,13 @@ function App() {
     const data = await res.json();
     setAnalyticsData(data);
     setView('analytics');
+  };
+
+  const fetchDetailedAnalysis = async () => {
+    const res = await fetch(`${API_BASE}/detailed-analysis/${user.id}`);
+    const data = await res.json();
+    setDetailedAnalysis(data);
+    setView('performance-report');
   };
 
   const startQuiz = async (topic) => {
@@ -80,6 +88,7 @@ function App() {
           {user && (
             <>
               <button className="btn" style={{background: 'transparent', color: 'var(--text-muted)'}} onClick={fetchAnalytics}>Analytics</button>
+              <button className="btn" style={{background: 'transparent', color: 'var(--text-muted)'}} onClick={fetchDetailedAnalysis}>AI Report</button>
               <button className="btn" style={{background: 'transparent', color: 'var(--text-muted)'}} onClick={fetchLeaderboard}>Leaderboard</button>
               <div className="badge" style={{background: 'var(--card)'}}>XP: {user.xp}</div>
             </>
@@ -250,6 +259,155 @@ function App() {
                 </div>
               </div>
             </div>
+            <div className="card" style={{marginTop: '2rem'}}>
+              <h3 style={{marginBottom: '1rem', color: 'var(--primary)'}}>Detailed Attempts</h3>
+              {(analyticsData.attempt_details || []).length > 0 ? (
+                (analyticsData.attempt_details || []).slice(0, 15).map((a, i) => (
+                  <div key={i} style={{padding: '0.75rem 0', borderBottom: '1px solid rgba(255,255,255,0.1)'}}>
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem'}}>
+                      <span style={{fontWeight: 'bold'}}>{a.subject} • {a.topic}</span>
+                      <span style={{color: a.is_correct ? 'var(--success)' : 'var(--accent)'}}>{a.is_correct ? 'Correct' : 'Incorrect'}</span>
+                    </div>
+                    <div style={{color: 'var(--text-muted)', fontSize: '0.9rem'}}>{a.question_text || 'Question text unavailable'}</div>
+                    <div style={{marginTop: '0.25rem', fontSize: '0.8rem', color: 'var(--text-muted)'}}>
+                      Mistake: {a.mistake_type || 'N/A'} • Time: {a.time_taken}s • Difficulty: {a.difficulty}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p style={{color: 'var(--text-muted)'}}>No attempts available yet.</p>
+              )}
+            </div>
+            <div style={{textAlign: 'center', marginTop: '2rem'}}>
+              <button className="btn btn-primary" onClick={() => fetchDashboard(user.id)}>Back to Dashboard</button>
+            </div>
+          </div>
+        )}
+
+        {view === 'performance-report' && detailedAnalysis && (
+          <div className="animate-fade">
+            <h2 style={{fontSize: '2.5rem', marginBottom: '0.5rem', textAlign: 'center'}}><span className="gradient-text">AI Performance Report</span></h2>
+            <p style={{textAlign: 'center', color: 'var(--text-muted)', marginBottom: '2rem'}}>Personalized analysis & recommendations</p>
+
+            {/* Overall Performance Card */}
+            <div className="card" style={{marginBottom: '2rem', background: 'linear-gradient(135deg, rgba(99,102,241,0.1), rgba(168,85,247,0.1))'}}>
+              <h3 style={{marginBottom: '1.5rem', color: 'var(--primary)'}}>📊 Overall Performance</h3>
+              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem'}}>
+                <div style={{textAlign: 'center'}}>
+                  <div style={{fontSize: '2rem', fontWeight: 'bold', color: 'var(--secondary)'}}>{detailedAnalysis.overall_performance.accuracy}%</div>
+                  <div style={{fontSize: '0.85rem', color: 'var(--text-muted)'}}>Accuracy</div>
+                </div>
+                <div style={{textAlign: 'center'}}>
+                  <div style={{fontSize: '2rem', fontWeight: 'bold', color: 'var(--success)'}}>{detailedAnalysis.overall_performance.correct_answers}</div>
+                  <div style={{fontSize: '0.85rem', color: 'var(--text-muted)'}}>Correct</div>
+                </div>
+                <div style={{textAlign: 'center'}}>
+                  <div style={{fontSize: '2rem', fontWeight: 'bold', color: 'var(--accent)'}}>{detailedAnalysis.overall_performance.incorrect_answers}</div>
+                  <div style={{fontSize: '0.85rem', color: 'var(--text-muted)'}}>Incorrect</div>
+                </div>
+                <div style={{textAlign: 'center'}}>
+                  <div style={{fontSize: '2rem', fontWeight: 'bold', color: 'var(--primary)'}}>{detailedAnalysis.overall_performance.avg_time_per_question}s</div>
+                  <div style={{fontSize: '0.85rem', color: 'var(--text-muted)'}}>Avg Time</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Strengths */}
+            {detailedAnalysis.strengths && detailedAnalysis.strengths.length > 0 && (
+              <div className="card" style={{marginBottom: '2rem', borderLeft: '4px solid var(--success)'}}>
+                <h3 style={{marginBottom: '1rem', color: 'var(--success)'}}>✅ Your Strengths</h3>
+                {detailedAnalysis.strengths.map((s, i) => (
+                  <div key={i} style={{padding: '0.75rem', background: 'rgba(34,197,94,0.05)', marginBottom: '0.5rem', borderRadius: '0.5rem'}}>
+                    <div style={{fontWeight: 'bold', marginBottom: '0.25rem'}}>{s.topic}</div>
+                    <div style={{fontSize: '0.9rem', color: 'var(--text-muted)'}}>
+                      {s.accuracy}% accuracy • {s.attempts} attempts • {s.avg_time}s avg
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Weaknesses */}
+            {detailedAnalysis.weaknesses && detailedAnalysis.weaknesses.length > 0 && (
+              <div className="card" style={{marginBottom: '2rem', borderLeft: '4px solid var(--accent)'}}>
+                <h3 style={{marginBottom: '1rem', color: 'var(--accent)'}}>🔴 Areas to Improve</h3>
+                {detailedAnalysis.weaknesses.map((w, i) => (
+                  <div key={i} style={{padding: '0.75rem', background: 'rgba(239,68,68,0.05)', marginBottom: '0.5rem', borderRadius: '0.5rem'}}>
+                    <div style={{fontWeight: 'bold', marginBottom: '0.25rem'}}>{w.topic}</div>
+                    <div style={{fontSize: '0.9rem', color: 'var(--text-muted)'}}>
+                      {w.accuracy}% accuracy • {w.attempts} attempts • Common mistake: {w.dominant_mistake || 'N/A'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Patterns Detected */}
+            {detailedAnalysis.patterns && detailedAnalysis.patterns.length > 0 && (
+              <div className="card" style={{marginBottom: '2rem', borderLeft: '4px solid var(--secondary)'}}>
+                <h3 style={{marginBottom: '1rem', color: 'var(--secondary)'}}>🎯 Patterns Detected</h3>
+                {detailedAnalysis.patterns.map((p, i) => (
+                  <div key={i} style={{padding: '0.75rem', background: 'rgba(168,85,247,0.05)', marginBottom: '0.5rem', borderRadius: '0.5rem'}}>
+                    <div style={{fontWeight: 'bold', marginBottom: '0.25rem', color: p.severity === 'high' ? 'var(--accent)' : 'var(--secondary)'}}>
+                      {p.type} {p.severity === 'high' ? '⚠️' : ''}
+                    </div>
+                    <div style={{fontSize: '0.9rem', color: 'var(--text-muted)'}}>{p.description}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Time Management */}
+            {detailedAnalysis.time_management && (
+              <div className="card" style={{marginBottom: '2rem'}}>
+                <h3 style={{marginBottom: '1rem', color: 'var(--primary)'}}>⏱️ Time Management</h3>
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem'}}>
+                  <div style={{textAlign: 'center', padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '0.5rem'}}>
+                    <div style={{fontSize: '0.9rem', color: 'var(--text-muted)'}}>🚀 Fast (&lt;30s)</div>
+                    <div style={{fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary)'}}>{detailedAnalysis.time_management.distribution.fast}%</div>
+                  </div>
+                  <div style={{textAlign: 'center', padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '0.5rem'}}>
+                    <div style={{fontSize: '0.9rem', color: 'var(--text-muted)'}}>⚡ Moderate (30-60s)</div>
+                    <div style={{fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--secondary)'}}>{detailedAnalysis.time_management.distribution.moderate}%</div>
+                  </div>
+                  <div style={{textAlign: 'center', padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '0.5rem'}}>
+                    <div style={{fontSize: '0.9rem', color: 'var(--text-muted)'}}>🐢 Slow (&gt;60s)</div>
+                    <div style={{fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent)'}}>{detailedAnalysis.time_management.distribution.slow}%</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Personalized Suggestions */}
+            {detailedAnalysis.suggestions && detailedAnalysis.suggestions.length > 0 && (
+              <div className="card" style={{marginBottom: '2rem', background: 'linear-gradient(135deg, rgba(34,197,94,0.05), rgba(59,130,246,0.05))'}}>
+                <h3 style={{marginBottom: '1rem', color: 'var(--success)'}}>💡 AI Recommendations</h3>
+                {detailedAnalysis.suggestions.map((s, i) => (
+                  <div key={i} style={{padding: '0.75rem', marginBottom: '0.75rem', borderLeft: '3px solid var(--success)', paddingLeft: '1rem'}}>
+                    <div style={{fontSize: '0.95rem', lineHeight: '1.6'}}>{s}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Mistake Breakdown */}
+            {detailedAnalysis.mistake_breakdown && detailedAnalysis.mistake_breakdown.length > 0 && (
+              <div className="card" style={{marginBottom: '2rem'}}>
+                <h3 style={{marginBottom: '1rem', color: 'var(--accent)'}}>📍 Mistake Breakdown</h3>
+                {detailedAnalysis.mistake_breakdown.map((m, i) => (
+                  <div key={i} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.1)'}}>
+                    <span>{m.type}</span>
+                    <div style={{display: 'flex', gap: '1rem', alignItems: 'center'}}>
+                      <div style={{width: '150px', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px'}}>
+                        <div style={{width: `${m.percentage}%`, height: '100%', background: 'var(--secondary)', borderRadius: '3px'}}></div>
+                      </div>
+                      <span style={{fontSize: '0.85rem', color: 'var(--secondary)', minWidth: '50px'}}>{m.count} ({m.percentage}%)</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div style={{textAlign: 'center', marginTop: '2rem'}}>
               <button className="btn btn-primary" onClick={() => fetchDashboard(user.id)}>Back to Dashboard</button>
             </div>
